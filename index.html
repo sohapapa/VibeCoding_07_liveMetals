@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MetalPulse | 실시간 금속 시세 대시보드</title>
+  <meta name="description" content="MetalpriceAPI 기반 실시간 금, 은, 구리, 플래티넘 시세 및 기간별 변동 추세 차트 대시보드">
+  
+  <!-- Google Fonts: Inter & Pretendard -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Top Global Header -->
+    <header class="main-header">
+      <div class="header-container">
+        <div class="brand-group">
+          <div class="brand-logo-glow">
+            <span class="brand-icon">⚡</span>
+          </div>
+          <div>
+            <div class="brand-title-wrap">
+              <h1 class="brand-title">MetalPulse</h1>
+              <span class="brand-badge">PRO</span>
+            </div>
+            <p class="brand-subtitle">실시간 귀금속 & 산업금속 시세 모니터링</p>
+          </div>
+        </div>
+
+        <!-- Global Action Controls -->
+        <div class="header-controls">
+          <!-- Live / Demo Indicator Status -->
+          <div class="api-status-badge" id="apiStatusBadge" title="클릭하여 API 설정 열기">
+            <span class="status-dot"></span>
+            <span class="status-text" id="statusText">데모 모드</span>
+          </div>
+
+          <!-- Currency Selector -->
+          <div class="control-select-wrap">
+            <label for="currencySelect" class="control-label">통화</label>
+            <select id="currencySelect" class="custom-select" aria-label="통화 선택">
+              <option value="USD">USD ($)</option>
+              <option value="KRW" selected>KRW (₩)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="JPY">JPY (¥)</option>
+            </select>
+          </div>
+
+          <!-- Unit Selector -->
+          <div class="control-select-wrap">
+            <label for="unitSelect" class="control-label">단위</label>
+            <select id="unitSelect" class="custom-select" aria-label="중량 단위 선택">
+              <option value="oz" selected>트로이온스 (oz)</option>
+              <option value="g">그램 (g)</option>
+              <option value="kg">킬로그램 (kg)</option>
+            </select>
+          </div>
+
+          <!-- API Settings Button -->
+          <button id="openApiModalBtn" class="btn btn-secondary" title="MetalpriceAPI 키 설정">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <span>API 설정</span>
+          </button>
+
+          <!-- Refresh Button -->
+          <button id="refreshBtn" class="btn btn-primary" title="시세 새로고침">
+            <svg class="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+            <span>새로고침</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="content-container">
+      
+      <!-- Market Info Banner -->
+      <section class="banner-section">
+        <div class="banner-left">
+          <span class="pulse-indicator"></span>
+          <span class="banner-text" id="marketUpdateTime">시세 기준: 데이터 로딩 중...</span>
+        </div>
+        <div class="banner-right">
+          <span class="banner-source">제공: <strong>MetalpriceAPI</strong> & 글로벌 외환 마켓</span>
+        </div>
+      </section>
+
+      <!-- 1. Top Section: Current Metal Price Card Views -->
+      <section class="cards-section" aria-labelledby="cardsHeading">
+        <div class="section-title-wrap">
+          <h2 id="cardsHeading" class="section-title">실시간 주요 금속 시세 현황</h2>
+          <span class="section-desc">글로벌 런던/뉴욕 시장 실시간 거래 가격 (카드뷰)</span>
+        </div>
+
+        <div class="cards-grid" id="metalCardsGrid">
+          <!-- Gold Card -->
+          <div class="metal-card card-gold" id="card-XAU" data-symbol="XAU">
+            <div class="card-glow-bg"></div>
+            <div class="card-header">
+              <div class="metal-identity">
+                <span class="metal-icon gold-icon">🥇</span>
+                <div>
+                  <h3 class="metal-name">금 <span class="metal-en">Gold</span></h3>
+                  <span class="metal-symbol">XAU</span>
+                </div>
+              </div>
+              <div class="card-change-badge" id="badge-XAU">+0.00%</div>
+            </div>
+
+            <div class="card-body">
+              <div class="metal-price-display" id="price-XAU">--</div>
+              <div class="price-change-sub" id="change-diff-XAU">변동폭 계산 중...</div>
+            </div>
+
+            <div class="card-footer">
+              <div class="range-info">
+                <div class="range-labels">
+                  <span>24h 최저: <b id="low-XAU">--</b></span>
+                  <span>24h 최고: <b id="high-XAU">--</b></span>
+                </div>
+                <div class="range-bar-track">
+                  <div class="range-bar-fill gold-bar" id="range-fill-XAU" style="width: 50%"></div>
+                </div>
+              </div>
+              <div class="mini-sparkline-wrap">
+                <canvas id="sparkline-XAU" width="180" height="36"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Silver Card -->
+          <div class="metal-card card-silver" id="card-XAG" data-symbol="XAG">
+            <div class="card-glow-bg"></div>
+            <div class="card-header">
+              <div class="metal-identity">
+                <span class="metal-icon silver-icon">🥈</span>
+                <div>
+                  <h3 class="metal-name">은 <span class="metal-en">Silver</span></h3>
+                  <span class="metal-symbol">XAG</span>
+                </div>
+              </div>
+              <div class="card-change-badge" id="badge-XAG">+0.00%</div>
+            </div>
+
+            <div class="card-body">
+              <div class="metal-price-display" id="price-XAG">--</div>
+              <div class="price-change-sub" id="change-diff-XAG">변동폭 계산 중...</div>
+            </div>
+
+            <div class="card-footer">
+              <div class="range-info">
+                <div class="range-labels">
+                  <span>24h 최저: <b id="low-XAG">--</b></span>
+                  <span>24h 최고: <b id="high-XAG">--</b></span>
+                </div>
+                <div class="range-bar-track">
+                  <div class="range-bar-fill silver-bar" id="range-fill-XAG" style="width: 50%"></div>
+                </div>
+              </div>
+              <div class="mini-sparkline-wrap">
+                <canvas id="sparkline-XAG" width="180" height="36"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Copper Card -->
+          <div class="metal-card card-copper" id="card-XCU" data-symbol="XCU">
+            <div class="card-glow-bg"></div>
+            <div class="card-header">
+              <div class="metal-identity">
+                <span class="metal-icon copper-icon">🥉</span>
+                <div>
+                  <h3 class="metal-name">구리 <span class="metal-en">Copper</span></h3>
+                  <span class="metal-symbol">XCU</span>
+                </div>
+              </div>
+              <div class="card-change-badge" id="badge-XCU">+0.00%</div>
+            </div>
+
+            <div class="card-body">
+              <div class="metal-price-display" id="price-XCU">--</div>
+              <div class="price-change-sub" id="change-diff-XCU">변동폭 계산 중...</div>
+            </div>
+
+            <div class="card-footer">
+              <div class="range-info">
+                <div class="range-labels">
+                  <span>24h 최저: <b id="low-XCU">--</b></span>
+                  <span>24h 최고: <b id="high-XCU">--</b></span>
+                </div>
+                <div class="range-bar-track">
+                  <div class="range-bar-fill copper-bar" id="range-fill-XCU" style="width: 50%"></div>
+                </div>
+              </div>
+              <div class="mini-sparkline-wrap">
+                <canvas id="sparkline-XCU" width="180" height="36"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Platinum Card -->
+          <div class="metal-card card-platinum" id="card-XPT" data-symbol="XPT">
+            <div class="card-glow-bg"></div>
+            <div class="card-header">
+              <div class="metal-identity">
+                <span class="metal-icon platinum-icon">💍</span>
+                <div>
+                  <h3 class="metal-name">플래티넘 <span class="metal-en">Platinum</span></h3>
+                  <span class="metal-symbol">XPT</span>
+                </div>
+              </div>
+              <div class="card-change-badge" id="badge-XPT">+0.00%</div>
+            </div>
+
+            <div class="card-body">
+              <div class="metal-price-display" id="price-XPT">--</div>
+              <div class="price-change-sub" id="change-diff-XPT">변동폭 계산 중...</div>
+            </div>
+
+            <div class="card-footer">
+              <div class="range-info">
+                <div class="range-labels">
+                  <span>24h 최저: <b id="low-XPT">--</b></span>
+                  <span>24h 최고: <b id="high-XPT">--</b></span>
+                </div>
+                <div class="range-bar-track">
+                  <div class="range-bar-fill platinum-bar" id="range-fill-XPT" style="width: 50%"></div>
+                </div>
+              </div>
+              <div class="mini-sparkline-wrap">
+                <canvas id="sparkline-XPT" width="180" height="36"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Period Selection Bar -->
+      <section class="period-control-section">
+        <div class="period-control-card">
+          <div class="period-title-group">
+            <h2 class="period-heading">금속별 시세 변동 추세 분석</h2>
+            <p class="period-sub">조회 기간을 선택하면 하단의 각 금속별 차트가 실시간으로 동기화됩니다.</p>
+          </div>
+
+          <div class="period-actions">
+            <!-- Period Presets -->
+            <div class="btn-group period-btn-group" role="group" aria-label="기간 선택 프리셋">
+              <button type="button" class="btn period-btn" data-period="7D">7일</button>
+              <button type="button" class="btn period-btn active" data-period="1M">1개월</button>
+              <button type="button" class="btn period-btn" data-period="3M">3개월</button>
+              <button type="button" class="btn period-btn" data-period="6M">6개월</button>
+              <button type="button" class="btn period-btn" data-period="1Y">1년</button>
+            </div>
+
+            <!-- Custom Date Range -->
+            <div class="custom-date-wrap">
+              <div class="date-input-group">
+                <label for="startDateInput" class="date-label">시작</label>
+                <input type="date" id="startDateInput" class="custom-date-input" aria-label="시작 날짜">
+              </div>
+              <span class="date-sep">~</span>
+              <div class="date-input-group">
+                <label for="endDateInput" class="date-label">종료</label>
+                <input type="date" id="endDateInput" class="custom-date-input" aria-label="종료 날짜">
+              </div>
+              <button id="applyCustomDateBtn" class="btn btn-outline-apply">적용</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Bottom Section: Vertical Stacked Charts (1개씩 세로 정렬) -->
+      <section class="charts-vertical-section" aria-labelledby="verticalChartsHeading">
+        <h2 id="verticalChartsHeading" class="sr-only">금속별 시세 변동 세로 차트</h2>
+
+        <!-- Vertical Chart 1: Gold -->
+        <article class="chart-panel panel-gold" id="panel-XAU">
+          <div class="chart-panel-header">
+            <div class="panel-meta">
+              <span class="panel-tag gold-tag">GOLD</span>
+              <h3 class="panel-title">금 (Gold / XAU) 시세 변동 추이</h3>
+            </div>
+            <div class="panel-stats">
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최고가</span>
+                <span class="stat-val" id="stats-high-XAU">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최저가</span>
+                <span class="stat-val" id="stats-low-XAU">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 변동률</span>
+                <span class="stat-val highlight" id="stats-return-XAU">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-XAU"></canvas>
+          </div>
+        </article>
+
+        <!-- Vertical Chart 2: Silver -->
+        <article class="chart-panel panel-silver" id="panel-XAG">
+          <div class="chart-panel-header">
+            <div class="panel-meta">
+              <span class="panel-tag silver-tag">SILVER</span>
+              <h3 class="panel-title">은 (Silver / XAG) 시세 변동 추이</h3>
+            </div>
+            <div class="panel-stats">
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최고가</span>
+                <span class="stat-val" id="stats-high-XAG">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최저가</span>
+                <span class="stat-val" id="stats-low-XAG">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 변동률</span>
+                <span class="stat-val highlight" id="stats-return-XAG">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-XAG"></canvas>
+          </div>
+        </article>
+
+        <!-- Vertical Chart 3: Copper -->
+        <article class="chart-panel panel-copper" id="panel-XCU">
+          <div class="chart-panel-header">
+            <div class="panel-meta">
+              <span class="panel-tag copper-tag">COPPER</span>
+              <h3 class="panel-title">구리 (Copper / XCU) 시세 변동 추이</h3>
+            </div>
+            <div class="panel-stats">
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최고가</span>
+                <span class="stat-val" id="stats-high-XCU">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최저가</span>
+                <span class="stat-val" id="stats-low-XCU">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 변동률</span>
+                <span class="stat-val highlight" id="stats-return-XCU">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-XCU"></canvas>
+          </div>
+        </article>
+
+        <!-- Vertical Chart 4: Platinum -->
+        <article class="chart-panel panel-platinum" id="panel-XPT">
+          <div class="chart-panel-header">
+            <div class="panel-meta">
+              <span class="panel-tag platinum-tag">PLATINUM</span>
+              <h3 class="panel-title">플래티넘 (Platinum / XPT) 시세 변동 추이</h3>
+            </div>
+            <div class="panel-stats">
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최고가</span>
+                <span class="stat-val" id="stats-high-XPT">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 최저가</span>
+                <span class="stat-val" id="stats-low-XPT">--</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-lbl">기간 변동률</span>
+                <span class="stat-val highlight" id="stats-return-XPT">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-XPT"></canvas>
+          </div>
+        </article>
+
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+      <div class="footer-content">
+        <p>© 2026 <strong>MetalPulse</strong> | Powered by MetalpriceAPI | All Rights Reserved.</p>
+        <p class="footer-notice">본 사이트의 시세 정보는 참고용이며, 투자 및 거래에 따른 책임은 이용자 본인에게 있습니다.</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- API Key Modal Dialog -->
+  <dialog id="apiModal" class="custom-modal" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">🔑</span>
+          <h3 id="modalTitle" class="modal-title">MetalpriceAPI 설정</h3>
+        </div>
+        <button id="closeApiModalBtn" class="modal-close-btn" aria-label="닫기">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc">
+          <strong>MetalpriceAPI</strong>는 실시간 및 과거 금속 시세를 제공하는 신뢰성 높은 금융 API입니다. 
+          키를 입력하시면 실시간 실제 시장 시세로 자동 전환됩니다.
+        </p>
+
+        <div class="form-group">
+          <label for="apiKeyInput" class="form-label">API Key 입력</label>
+          <div class="input-with-action">
+            <input type="text" id="apiKeyInput" class="form-input" placeholder="MetalpriceAPI 발급 키 (예: abcd1234efgh5678)">
+            <button id="saveApiKeyBtn" class="btn btn-primary">저장</button>
+          </div>
+          <p class="input-helper">
+            API Key가 없으신가요? 
+            <a href="https://metalpriceapi.com" target="_blank" rel="noopener noreferrer" class="link-external">
+              metalpriceapi.com에서 무료 발급받기 ↗
+            </a>
+          </p>
+        </div>
+
+        <div class="mode-toggle-card">
+          <div class="mode-toggle-info">
+            <span class="mode-name">데모 모드 활성화</span>
+            <span class="mode-detail">API 키 없이도 현실적인 실제 기준 금속 시세로 모든 기능을 체험합니다.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="demoModeToggle" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <div class="modal-tip">
+          💡 <strong>참고:</strong> 무료 플랜은 과거 기간 조회(Timeframe)에 제약이 있을 수 있으며, 앱 내부에서 안정적인 데이터 표시를 위해 자동 Fallback을 지원합니다.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="clearApiKeyBtn" class="btn btn-danger-ghost">키 삭제 및 초기화</button>
+        <button id="closeModalOkBtn" class="btn btn-secondary">닫기</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
